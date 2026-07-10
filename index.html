@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#171717" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="LinkNote" />
+  <link rel="manifest" href="./manifest.webmanifest" />
+  <link rel="apple-touch-icon" href="./icons/icon-192.png" />
+  <link rel="icon" href="./icons/icon-192.png" />
+  <link rel="stylesheet" href="./styles.css" />
+  <title>LinkNote</title>
+</head>
+<body>
+  <div id="app">
+    <header class="topbar">
+      <button id="menuBtn" class="icon-btn mobile-only" aria-label="開啟筆記列表">☰</button>
+      <div class="brand">
+        <span class="brand-dot"></span>
+        <span>LinkNote</span>
+      </div>
+      <div class="top-actions">
+        <button id="graphBtn" class="icon-btn" aria-label="開啟關聯圖譜">◎</button>
+        <button id="settingsBtn" class="icon-btn" aria-label="設定">⚙</button>
+      </div>
+    </header>
+
+    <main class="layout">
+      <aside id="sidebar" class="sidebar">
+        <div class="sidebar-head">
+          <div class="search-wrap">
+            <span>⌕</span>
+            <input id="searchInput" type="search" placeholder="搜尋筆記…" autocomplete="off" />
+          </div>
+          <button id="newNoteBtn" class="primary-btn">＋ 新增筆記</button>
+        </div>
+        <div id="noteList" class="note-list" aria-label="筆記列表"></div>
+      </aside>
+
+      <section id="workspace" class="workspace">
+        <div id="emptyState" class="empty-state hidden">
+          <div class="empty-logo">L</div>
+          <h1>開始建立你的知識庫</h1>
+          <p>新增筆記，並用 <code>[[筆記名稱]]</code> 建立雙向連結。</p>
+          <button id="emptyNewBtn" class="primary-btn">建立第一篇筆記</button>
+        </div>
+
+        <div id="editorView" class="editor-view">
+          <div class="note-toolbar">
+            <input id="titleInput" class="title-input" placeholder="未命名筆記" />
+            <div class="note-actions">
+              <button id="pinBtn" class="icon-btn" aria-label="置頂">☆</button>
+              <button id="deleteBtn" class="icon-btn danger" aria-label="刪除">⌫</button>
+            </div>
+          </div>
+
+          <div class="mode-tabs" role="tablist">
+            <button class="mode-tab active" data-mode="edit">編輯</button>
+            <button class="mode-tab" data-mode="preview">預覽</button>
+            <span id="saveStatus" class="save-status">已儲存</span>
+          </div>
+
+          <div id="editPane" class="pane">
+            <textarea id="contentInput" spellcheck="true" placeholder="# 開始寫筆記
+
+使用 [[另一篇筆記]] 建立連結
+使用 #標籤 進行分類"></textarea>
+          </div>
+
+          <div id="previewPane" class="pane preview hidden"></div>
+
+          <div class="meta-panel">
+            <section>
+              <h3>標籤</h3>
+              <div id="tagList" class="chips"></div>
+            </section>
+            <section>
+              <h3>反向連結</h3>
+              <div id="backlinks" class="backlinks"></div>
+            </section>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <div id="overlay" class="overlay hidden"></div>
+
+    <section id="graphModal" class="modal hidden" aria-modal="true" role="dialog">
+      <div class="modal-card graph-card">
+        <div class="modal-head">
+          <div>
+            <h2>關聯圖譜</h2>
+            <p>點選節點可開啟筆記</p>
+          </div>
+          <button class="icon-btn close-modal" aria-label="關閉">×</button>
+        </div>
+        <div id="graphContainer" class="graph-container"></div>
+      </div>
+    </section>
+
+    <section id="settingsModal" class="modal hidden" aria-modal="true" role="dialog">
+      <div class="modal-card">
+        <div class="modal-head">
+          <div>
+            <h2>設定與備份</h2>
+            <p>資料預設只保存在這台裝置的瀏覽器中</p>
+          </div>
+          <button class="icon-btn close-modal" aria-label="關閉">×</button>
+        </div>
+
+        <div class="settings-grid">
+          <button id="exportBtn" class="setting-action">
+            <strong>匯出備份</strong>
+            <span>下載 JSON 備份檔</span>
+          </button>
+          <label class="setting-action">
+            <strong>匯入備份</strong>
+            <span>選擇先前匯出的 JSON</span>
+            <input id="importInput" type="file" accept="application/json,.json" hidden />
+          </label>
+          <button id="exportMdBtn" class="setting-action">
+            <strong>匯出目前筆記</strong>
+            <span>下載 Markdown 檔案</span>
+          </button>
+          <button id="installHelpBtn" class="setting-action">
+            <strong>安裝到 iPhone</strong>
+            <span>顯示加入主畫面步驟</span>
+          </button>
+        </div>
+
+        <div id="installHelp" class="install-help hidden">
+          <h3>在 iPhone 15 安裝</h3>
+          <ol>
+            <li>用 Safari 開啟本 App 網址。</li>
+            <li>點擊 Safari 的「分享」按鈕。</li>
+            <li>選擇「加入主畫面」。</li>
+            <li>確認名稱後按「加入」。</li>
+          </ol>
+        </div>
+      </div>
+    </section>
+
+    <div id="toast" class="toast hidden" role="status"></div>
+  </div>
+
+  <script src="./app.js"></script>
+</body>
+</html>

@@ -1,0 +1,246 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#171717">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="LinkNote">
+  <title>LinkNote</title>
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="apple-touch-icon" href="./icons/icon-192.png">
+  <link rel="stylesheet" href="./styles.css?v=20260712-2">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <button id="menuBtn" class="icon-btn mobile-only" aria-label="開啟筆記列表">☰</button>
+      <span class="brand-dot" aria-hidden="true"></span>
+      <span>LinkNote</span>
+    </div>
+    <div class="top-actions">
+      <button id="graphBtn" class="icon-btn" title="知識圖譜" aria-label="知識圖譜">◎</button>
+      <button id="mindMapBtn" class="icon-btn" title="心智圖" aria-label="心智圖">⌘</button>
+      <button id="strategyBtn" class="icon-btn" title="策略地圖" aria-label="策略地圖">⇧</button>
+      <button id="trashBtn" class="icon-btn" title="垃圾桶" aria-label="垃圾桶">♲</button>
+      <button id="settingsBtn" class="icon-btn" title="設定與備份" aria-label="設定與備份">⚙</button>
+    </div>
+  </header>
+
+  <div class="layout">
+    <aside id="sidebar" class="sidebar">
+      <div class="sidebar-head">
+        <label class="search-wrap">
+          <span aria-hidden="true">⌕</span>
+          <input id="searchInput" type="search" placeholder="搜尋筆記、內容或 #標籤" autocomplete="off">
+        </label>
+        <button id="newNoteBtn" class="primary-btn">＋ 新增筆記</button>
+      </div>
+      <div id="noteList" class="note-list" aria-live="polite"></div>
+    </aside>
+
+    <main class="workspace">
+      <section id="emptyState" class="empty-state hidden">
+        <div class="empty-logo">L</div>
+        <h1>開始建立你的知識庫</h1>
+        <p>新增筆記，並用 <code>[[筆記名稱]]</code> 建立雙向連結。</p>
+        <button id="emptyNewBtn" class="primary-btn">建立第一篇筆記</button>
+      </section>
+
+      <section id="editorView" class="editor-view">
+        <div id="backupWarning" class="backup-warning hidden">
+          <span>尚未建立外部備份，清除網站資料仍可能刪除所有筆記。</span>
+          <button id="warningExportBtn" class="text-btn">立即備份</button>
+        </div>
+
+        <div class="note-toolbar">
+          <input id="titleInput" class="title-input" type="text" placeholder="未命名筆記" maxlength="180">
+          <div class="note-actions">
+            <button id="historyBtn" class="icon-btn" title="版本紀錄" aria-label="版本紀錄">↶</button>
+            <button id="pinBtn" class="icon-btn" title="置頂" aria-label="置頂">☆</button>
+            <button id="deleteBtn" class="icon-btn danger" title="移至垃圾桶" aria-label="移至垃圾桶">⌫</button>
+          </div>
+        </div>
+
+        <div class="mode-tabs">
+          <button class="mode-tab active" data-mode="edit">編輯</button>
+          <button class="mode-tab" data-mode="preview">預覽</button>
+          <span id="saveStatus" class="save-status">已儲存</span>
+        </div>
+
+        <div id="editPane" class="pane">
+          <textarea id="contentInput" spellcheck="true" placeholder="# 標題&#10;&#10;- 條列內容&#10;- [[另一篇筆記]]"></textarea>
+        </div>
+        <article id="previewPane" class="pane preview hidden"></article>
+
+        <div class="meta-panel">
+          <section>
+            <h3>標籤</h3>
+            <div id="tagList" class="chips"></div>
+          </section>
+          <section>
+            <h3>反向連結</h3>
+            <div id="backlinks"></div>
+          </section>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div id="overlay" class="overlay hidden"></div>
+
+  <div id="graphModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="graphTitle">
+    <div class="modal-card graph-card">
+      <div class="modal-head">
+        <div>
+          <h2 id="graphTitle">目前筆記的知識圖譜</h2>
+          <p>從目前筆記內的標題、條列與知識三元組建立概念關係，不再顯示整個筆記庫。</p>
+        </div>
+        <button class="icon-btn close-modal" aria-label="關閉">×</button>
+      </div>
+      <div class="visual-toolbar between">
+        <details class="graph-help">
+          <summary>知識三元組格式</summary>
+          <code>```knowledge<br>生成式 AI | 提供 | 即時回饋<br>即時回饋 | 提升 | 學習成效<br>```</code>
+        </details>
+        <button id="graphExportBtn" class="secondary-btn">匯出 SVG</button>
+      </div>
+      <div id="graphContainer" class="graph-container"></div>
+    </div>
+  </div>
+
+  <div id="mindMapModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="mindMapTitle">
+    <div class="modal-card graph-card">
+      <div class="modal-head">
+        <div>
+          <h2 id="mindMapTitle">心智圖</h2>
+          <p>依目前筆記的 Markdown 標題、縮排清單與 <code>[[連結]]</code> 自動建立。</p>
+        </div>
+        <button class="icon-btn close-modal" aria-label="關閉">×</button>
+      </div>
+      <div class="visual-toolbar">
+        <button id="mindZoomOutBtn" class="secondary-btn">－</button>
+        <button id="mindZoomResetBtn" class="secondary-btn">重設</button>
+        <button id="mindZoomInBtn" class="secondary-btn">＋</button>
+        <button id="mindExportBtn" class="secondary-btn">匯出 SVG</button>
+      </div>
+      <div id="mindMapContainer" class="graph-container mindmap-container"></div>
+    </div>
+  </div>
+
+  <div id="strategyModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="strategyTitle">
+    <div class="modal-card strategy-card">
+      <div class="modal-head">
+        <div>
+          <h2 id="strategyTitle">策略地圖</h2>
+          <p>以四個可重新命名的構面整理目標，箭頭表示可能的因果關係。</p>
+        </div>
+        <button class="icon-btn close-modal" aria-label="關閉">×</button>
+      </div>
+      <div class="strategy-controls">
+        <select id="strategyPerspectiveSelect" aria-label="選擇構面"></select>
+        <input id="strategyObjectiveInput" type="text" maxlength="120" placeholder="輸入策略目標">
+        <button id="strategyAddBtn" class="primary-btn compact">新增目標</button>
+        <button id="strategyLinkBtn" class="secondary-btn">建立連線</button>
+        <button id="strategyEditBtn" class="secondary-btn">編輯所選</button>
+        <button id="strategyDeleteBtn" class="secondary-btn danger-text">刪除所選</button>
+        <button id="strategyRenameBtn" class="secondary-btn">重新命名構面</button>
+        <button id="strategyExportBtn" class="secondary-btn">匯出 SVG</button>
+      </div>
+      <p id="strategyHint" class="strategy-hint">點選目標可選取；雙擊可編輯目標與 KPI。</p>
+      <div id="strategyContainer" class="strategy-container"></div>
+    </div>
+  </div>
+
+  <div id="trashModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="trashTitle">
+    <div class="modal-card">
+      <div class="modal-head">
+        <div>
+          <h2 id="trashTitle">垃圾桶</h2>
+          <p>被刪除的筆記會保留在這裡，直到手動永久刪除。</p>
+        </div>
+        <button class="icon-btn close-modal" aria-label="關閉">×</button>
+      </div>
+      <div class="visual-toolbar between">
+        <span id="trashCount" class="muted"></span>
+        <button id="emptyTrashBtn" class="secondary-btn danger-text">清空垃圾桶</button>
+      </div>
+      <div id="trashList" class="trash-list"></div>
+    </div>
+  </div>
+
+  <div id="historyModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="historyTitle">
+    <div class="modal-card">
+      <div class="modal-head">
+        <div>
+          <h2 id="historyTitle">版本紀錄</h2>
+          <p>每篇筆記最多保留 30 個近期版本。</p>
+        </div>
+        <button class="icon-btn close-modal" aria-label="關閉">×</button>
+      </div>
+      <div id="historyList" class="history-list"></div>
+    </div>
+  </div>
+
+  <div id="settingsModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
+    <div class="modal-card">
+      <div class="modal-head">
+        <div>
+          <h2 id="settingsTitle">設定與備份</h2>
+          <p>資料會儲存在 IndexedDB，並自動搬移舊版 localStorage 筆記。</p>
+        </div>
+        <button class="icon-btn close-modal" aria-label="關閉">×</button>
+      </div>
+
+      <div class="storage-status">
+        <div><strong>儲存狀態</strong><span id="storageStatus">檢查中…</span></div>
+        <div><strong>上次外部備份</strong><span id="lastBackupStatus">尚未備份</span></div>
+      </div>
+
+      <div class="settings-grid">
+        <button id="persistentBtn" class="setting-action">
+          <strong>要求持久儲存</strong>
+          <span>降低瀏覽器因空間不足自動清理資料的機率</span>
+        </button>
+        <button id="exportBtn" class="setting-action">
+          <strong>匯出完整備份</strong>
+          <span>包含筆記、垃圾桶、版本紀錄與策略地圖</span>
+        </button>
+        <label class="setting-action file-action">
+          <strong>合併匯入備份</strong>
+          <span>同名筆記會合併內容，不直接覆蓋</span>
+          <input id="importInput" type="file" accept="application/json,.json" hidden>
+        </label>
+        <button id="exportMdBtn" class="setting-action">
+          <strong>匯出目前筆記</strong>
+          <span>下載 Markdown 檔案</span>
+        </button>
+        <button id="installHelpBtn" class="setting-action">
+          <strong>安裝到 iPhone</strong>
+          <span>顯示加入主畫面步驟</span>
+        </button>
+      </div>
+
+      <div id="installHelp" class="install-help hidden">
+        <h3>在 iPhone 15 安裝</h3>
+        <ol>
+          <li>用 Safari 開啟本 App 網址。</li>
+          <li>點擊 Safari 的「分享」按鈕。</li>
+          <li>選擇「加入主畫面」。</li>
+          <li>確認名稱後按「加入」。</li>
+        </ol>
+      </div>
+
+      <p class="storage-warning">即使取得持久儲存權限，使用者仍可在瀏覽器設定中手動刪除網站資料，因此外部 JSON 備份仍是必要的。</p>
+    </div>
+  </div>
+
+  <div id="toast" class="toast hidden" role="status" aria-live="polite">
+    <span id="toastMessage"></span>
+    <button id="toastAction" class="toast-action hidden"></button>
+  </div>
+
+  <script src="./app.js?v=20260712-2" defer></script>
+</body>
+</html>

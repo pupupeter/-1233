@@ -1,0 +1,485 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#171717">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="LinkNote">
+  <title>LinkNote</title>
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="apple-touch-icon" href="./icons/icon-192.png">
+  <link rel="stylesheet" href="./styles.css?v=20260713-5">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <button id="menuBtn" class="icon-btn mobile-only" aria-label="開啟筆記列表">☰</button>
+      <span class="brand-dot" aria-hidden="true"></span>
+      <span>LinkNote</span>
+    </div>
+    <div class="top-actions">
+      <button id="graphBtn" class="icon-btn" title="知識圖譜" aria-label="知識圖譜">◎</button>
+      <button id="mindMapBtn" class="icon-btn" title="心智圖" aria-label="心智圖">⌘</button>
+      <button id="flowBtn" class="icon-btn" title="流程圖" aria-label="流程圖">↬</button>
+      <button id="treeBtn" class="icon-btn" title="樹狀圖" aria-label="樹狀圖">♧</button>
+      <button id="strategyBtn" class="icon-btn" title="策略地圖" aria-label="策略地圖">⇧</button>
+      <button id="trashBtn" class="icon-btn" title="垃圾桶" aria-label="垃圾桶">♲</button>
+      <button id="settingsBtn" class="icon-btn" title="設定與備份" aria-label="設定與備份">⚙</button>
+    </div>
+  </header>
+
+  <div class="layout">
+    <aside id="sidebar" class="sidebar" aria-label="筆記側邊欄">
+      <div class="sidebar-head">
+        <label class="search-wrap">
+          <span aria-hidden="true">⌕</span>
+          <input id="searchInput" type="search" placeholder="搜尋筆記、內容或 #標籤" autocomplete="off">
+        </label>
+        <button id="newNoteBtn" class="primary-btn">＋ 新增筆記</button>
+        <button id="helpBtn" class="secondary-btn sidebar-help-btn">？ 使用說明與範例</button>
+      </div>
+      <div class="note-list-shell">
+        <div id="noteList" class="note-list" aria-live="polite" aria-label="筆記列表" tabindex="0"></div>
+        <button id="sidebarTopBtn" class="sidebar-top-btn hidden" type="button" title="回到筆記列表頂端" aria-label="回到筆記列表頂端">↑</button>
+      </div>
+      <div class="sidebar-foot" aria-live="polite">
+        <span id="noteCount">0 篇筆記</span>
+        <span class="sidebar-scroll-hint">上下捲動瀏覽</span>
+      </div>
+    </aside>
+
+    <main class="workspace">
+      <section id="emptyState" class="empty-state hidden">
+        <div class="empty-logo">L</div>
+        <h1>開始建立你的知識庫</h1>
+        <p>新增筆記，並用 <code>[[筆記名稱]]</code> 建立雙向連結。</p>
+        <div class="button-row empty-actions">
+          <button id="emptyNewBtn" class="primary-btn">建立第一篇筆記</button>
+          <button id="emptyHelpBtn" class="secondary-btn">查看使用說明</button>
+        </div>
+      </section>
+
+      <section id="editorView" class="editor-view">
+        <div id="backupWarning" class="backup-warning hidden">
+          <span>尚未建立外部備份，清除網站資料仍可能刪除所有筆記。</span>
+          <button id="warningExportBtn" class="text-btn">立即備份</button>
+        </div>
+
+        <div class="note-toolbar">
+          <input id="titleInput" class="title-input" type="text" placeholder="未命名筆記" maxlength="180">
+          <div class="note-actions">
+            <button id="historyBtn" class="icon-btn" title="版本紀錄" aria-label="版本紀錄">↶</button>
+            <button id="pinBtn" class="icon-btn" title="置頂" aria-label="置頂">☆</button>
+            <button id="deleteBtn" class="icon-btn danger" title="移至垃圾桶" aria-label="移至垃圾桶">⌫</button>
+          </div>
+        </div>
+
+        <div class="mode-tabs">
+          <button class="mode-tab active" data-mode="edit">編輯</button>
+          <button class="mode-tab" data-mode="preview">預覽</button>
+          <span id="saveStatus" class="save-status">已儲存</span>
+        </div>
+
+        <div id="editPane" class="pane">
+          <textarea id="contentInput" spellcheck="true" placeholder="# 標題&#10;&#10;- 條列內容&#10;- [[另一篇筆記]]"></textarea>
+        </div>
+        <article id="previewPane" class="pane preview hidden"></article>
+
+        <div class="meta-panel">
+          <section>
+            <h3>標籤</h3>
+            <div id="tagList" class="chips"></div>
+          </section>
+          <section>
+            <h3>反向連結</h3>
+            <div id="backlinks"></div>
+          </section>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div id="overlay" class="overlay hidden"></div>
+
+  <div id="graphModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="graphTitle">
+    <div class="modal-card graph-card">
+      <div class="modal-head">
+        <div>
+          <h2 id="graphTitle">目前筆記的知識圖譜</h2>
+          <p>從目前筆記內的標題、條列與知識三元組建立概念關係，不再顯示整個筆記庫。</p>
+        </div>
+        <button class="icon-btn close-modal" aria-label="關閉">×</button>
+      </div>
+      <div class="visual-toolbar between">
+        <details class="graph-help">
+          <summary>知識三元組格式</summary>
+          <code>```knowledge<br>生成式 AI | 提供 | 即時回饋<br>即時回饋 | 提升 | 學習成效<br>```</code>
+        </details>
+        <button id="graphExportBtn" class="secondary-btn">匯出 SVG</button>
+      </div>
+      <div id="graphContainer" class="graph-container"></div>
+    </div>
+  </div>
+
+  <div id="mindMapModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="mindMapTitle">
+    <div class="modal-card graph-card">
+      <div class="modal-head">
+        <div>
+          <h2 id="mindMapTitle">心智圖</h2>
+          <p>依目前筆記的 Markdown 標題、縮排清單與 <code>[[連結]]</code> 自動建立。</p>
+        </div>
+        <button class="icon-btn close-modal" aria-label="關閉">×</button>
+      </div>
+      <div class="visual-toolbar">
+        <button id="mindZoomOutBtn" class="secondary-btn">－</button>
+        <button id="mindZoomResetBtn" class="secondary-btn">重設</button>
+        <button id="mindZoomInBtn" class="secondary-btn">＋</button>
+        <button id="mindExportBtn" class="secondary-btn">匯出 SVG</button>
+      </div>
+      <div id="mindMapContainer" class="graph-container mindmap-container"></div>
+    </div>
+  </div>
+
+  <div id="flowModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="flowTitle">
+    <div class="modal-card graph-card">
+      <div class="modal-head">
+        <div>
+          <h2 id="flowTitle">流程圖</h2>
+          <p>使用 flow 程式區塊描述步驟、判斷與流程方向。</p>
+        </div>
+        <button class="icon-btn close-modal" aria-label="關閉">×</button>
+      </div>
+      <div class="visual-toolbar between">
+        <details class="graph-help">
+          <summary>流程圖格式與形狀</summary>
+          <code>```flow<br>開始((開始)) -&gt; 蒐集資料[蒐集資料]<br>蒐集資料 -&gt; 判斷{資料完整？}<br>判斷 -&gt;|是| 分析[分析資料]<br>判斷 -&gt;|否| 蒐集資料<br>分析 -&gt; 完成((完成))<br>```</code>
+        </details>
+        <button id="flowExportBtn" class="secondary-btn">匯出 SVG</button>
+      </div>
+      <div id="flowContainer" class="graph-container flow-container"></div>
+    </div>
+  </div>
+
+  <div id="treeModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="treeTitle">
+    <div class="modal-card graph-card">
+      <div class="modal-head">
+        <div>
+          <h2 id="treeTitle">樹狀圖</h2>
+          <p>以由上而下的階層呈現分類；點擊有子節點的方塊可收合或展開。</p>
+        </div>
+        <button class="icon-btn close-modal" aria-label="關閉">×</button>
+      </div>
+      <div class="visual-toolbar between">
+        <details class="graph-help">
+          <summary>樹狀圖格式</summary>
+          <code>```tree<br>語言學習<br>&nbsp;&nbsp;中文<br>&nbsp;&nbsp;&nbsp;&nbsp;發音<br>&nbsp;&nbsp;&nbsp;&nbsp;文法<br>&nbsp;&nbsp;韓語<br>&nbsp;&nbsp;&nbsp;&nbsp;字母<br>&nbsp;&nbsp;&nbsp;&nbsp;敬語<br>```</code>
+        </details>
+        <div class="toolbar-group">
+          <button id="treeCollapseBtn" class="secondary-btn">收合到兩層</button>
+          <button id="treeExpandBtn" class="secondary-btn">全部展開</button>
+          <button id="treeExportBtn" class="secondary-btn">匯出 SVG</button>
+        </div>
+      </div>
+      <div id="treeContainer" class="graph-container tree-container"></div>
+    </div>
+  </div>
+
+  <div id="strategyModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="strategyTitle">
+    <div class="modal-card strategy-card">
+      <div class="modal-head">
+        <div>
+          <h2 id="strategyTitle">策略地圖</h2>
+          <p>由下往上閱讀：能力與資源 → 內部流程 → 使用者價值 → 最終成果。</p>
+        </div>
+        <button class="icon-btn close-modal" aria-label="關閉">×</button>
+      </div>
+
+      <div class="strategy-guide" aria-label="策略地圖使用步驟">
+        <div><span>1</span><strong>新增目標</strong><small>選構面，填入目標與 KPI</small></div>
+        <div><span>2</span><strong>建立因果</strong><small>選起點、關係和終點</small></div>
+        <div><span>3</span><strong>檢查故事</strong><small>確認箭頭由能力走向成果</small></div>
+      </div>
+
+      <details class="strategy-explain">
+        <summary>四個構面要放什麼？</summary>
+        <div class="perspective-explain-grid">
+          <p><strong>成果／財務：</strong>最後希望達成的成果，例如學習成效、使用人數或營運成果。</p>
+          <p><strong>學習者／利害關係人：</strong>使用者應感受到的價值，例如滿意度、留存率與信任。</p>
+          <p><strong>內部流程：</strong>必須做好的工作，例如內容產製、AI 回饋與資料管理。</p>
+          <p><strong>學習與成長：</strong>支撐策略的能力與資源，例如人才、技術、資料與文化。</p>
+        </div>
+      </details>
+
+      <section class="strategy-builder">
+        <div class="strategy-panel">
+          <div class="panel-title-row"><h3>新增策略目標</h3><button id="strategyTemplateBtn" class="text-btn">載入範例</button></div>
+          <label>放在哪個構面<select id="strategyPerspectiveSelect" aria-label="選擇構面"></select></label>
+          <label>策略目標<input id="strategyObjectiveInput" type="text" maxlength="120" placeholder="例如：提升 AI 回饋準確度"></label>
+          <label>KPI／衡量方式<input id="strategyKpiInput" type="text" maxlength="160" placeholder="例如：建議正確率達 90%"></label>
+          <button id="strategyAddBtn" class="primary-btn compact">＋ 新增目標</button>
+        </div>
+
+        <div id="strategySelectedPanel" class="strategy-panel">
+          <div class="panel-title-row"><h3>編輯所選目標</h3><span id="strategySelectedTitle" class="muted">尚未選擇</span></div>
+          <label>構面<select id="strategyEditPerspectiveSelect" disabled></select></label>
+          <label>目標<input id="strategyEditObjectiveInput" type="text" maxlength="120" disabled></label>
+          <label>KPI<input id="strategyEditKpiInput" type="text" maxlength="160" disabled></label>
+          <div class="button-row">
+            <button id="strategySaveBtn" class="secondary-btn" disabled>儲存修改</button>
+            <button id="strategyDeleteBtn" class="secondary-btn danger-text" disabled>刪除目標</button>
+          </div>
+        </div>
+
+        <div class="strategy-panel">
+          <h3>建立因果箭頭</h3>
+          <label>起點<select id="strategySourceSelect"></select></label>
+          <label>關係<input id="strategyRelationInput" type="text" maxlength="40" value="促進" placeholder="例如：促進、支援、提升"></label>
+          <label>終點<select id="strategyTargetSelect"></select></label>
+          <button id="strategyConnectBtn" class="primary-btn compact">＋ 建立連線</button>
+        </div>
+      </section>
+
+      <div class="visual-toolbar between strategy-map-toolbar">
+        <p id="strategyHint" class="strategy-hint">點選地圖中的目標，即可在上方表單編輯。</p>
+        <div class="toolbar-group">
+          <button id="strategyRenameBtn" class="secondary-btn">重新命名構面</button>
+          <button id="strategyClearBtn" class="secondary-btn danger-text">清空地圖</button>
+          <button id="strategyExportBtn" class="secondary-btn">匯出 SVG</button>
+        </div>
+      </div>
+      <div id="strategyContainer" class="strategy-container"></div>
+
+      <section class="strategy-connection-section">
+        <h3>目前因果連線</h3>
+        <div id="strategyConnectionList" class="strategy-connection-list"></div>
+      </section>
+    </div>
+  </div>
+
+
+  <div id="helpModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="helpTitle">
+    <div class="modal-card help-card">
+      <div class="modal-head">
+        <div>
+          <h2 id="helpTitle">LinkNote 使用說明與範例</h2>
+          <p>先判斷想表達的是「關係、發想、流程、分類」或「策略」，再選擇適合的圖。</p>
+        </div>
+        <button class="icon-btn close-modal" aria-label="關閉">×</button>
+      </div>
+
+      <section class="help-quick-start">
+        <h3>第一次使用：四個步驟</h3>
+        <ol>
+          <li><strong>新增筆記：</strong>按左側「＋ 新增筆記」，輸入標題與內容。</li>
+          <li><strong>套用格式：</strong>依下方範例使用 Markdown、<code>knowledge</code>、<code>flow</code> 或 <code>tree</code> 區塊。</li>
+          <li><strong>開啟圖表：</strong>按上方對應圖示；圖表只分析目前開啟的筆記。</li>
+          <li><strong>保存成果：</strong>可匯出 SVG；筆記資料則定期匯出完整 JSON 備份。</li>
+        </ol>
+        <div class="button-row">
+          <button id="helpCreateAllBtn" class="primary-btn compact">建立完整範例包</button>
+          <span class="muted">不會覆蓋同名筆記；已存在的範例會略過。</span>
+        </div>
+      </section>
+
+      <section>
+        <h3>我該使用哪一種圖？</h3>
+        <div class="help-choice-grid">
+          <article><strong>Knowledge Graph</strong><span>概念之間有明確關係</span><small>例如：降雨「增加」淹水風險。</small></article>
+          <article><strong>心智圖</strong><span>從中心主題向外發想</span><small>例如：研究題目的章節與想法。</small></article>
+          <article><strong>流程圖</strong><span>工作有先後順序或判斷</span><small>例如：申請、審核、補件、通過。</small></article>
+          <article><strong>樹狀圖</strong><span>內容是分類與上下層級</span><small>例如：生物分類、組織架構。</small></article>
+          <article><strong>策略地圖</strong><span>目標之間有因果與成果</span><small>例如：培訓員工 → 改善流程 → 提升滿意度。</small></article>
+        </div>
+      </section>
+
+      <section class="help-sections">
+        <details open>
+          <summary><span class="help-icon">◎</span> Knowledge Graph：概念關係圖</summary>
+          <p><strong>適合：</strong>研究概念、因果關係、人物與事件、系統元件關係。</p>
+          <p><strong>寫法：</strong>每一行是一個「主詞｜關係｜受詞」。</p>
+          <pre><code>```knowledge
+咖啡因 | 提高 | 警覺性
+睡眠不足 | 降低 | 專注力
+運動 -> 改善 -> 睡眠品質
+```</code></pre>
+          <p><strong>操作：</strong>儲存筆記後按上方「◎」。箭頭方向會從主詞指向受詞。</p>
+          <button class="secondary-btn help-example-btn" data-help-example="knowledge">建立 Knowledge Graph 範例</button>
+        </details>
+
+        <details>
+          <summary><span class="help-icon">⌘</span> 心智圖：從主題展開想法</summary>
+          <p><strong>適合：</strong>腦力激盪、文章大綱、課程整理、專案規劃。</p>
+          <p><strong>寫法：</strong>使用 Markdown 標題與縮排條列，不需要特殊程式區塊。</p>
+          <pre><code># 博物館展覽企劃
+## 展覽內容
+- 主題
+  - 城市記憶
+  - 日常生活
+## 觀眾體驗
+- 導覽
+- 互動裝置</code></pre>
+          <p><strong>操作：</strong>按上方「⌘」，可放大、縮小及匯出 SVG。</p>
+          <button class="secondary-btn help-example-btn" data-help-example="mind">建立心智圖範例</button>
+        </details>
+
+        <details>
+          <summary><span class="help-icon">↬</span> 流程圖：步驟、判斷與分支</summary>
+          <p><strong>適合：</strong>行政流程、使用者操作、研究程序、問題排除。</p>
+          <pre><code>```flow
+開始((開始)) -> 申請[提交申請]
+申請 -> 審核{資料完整？}
+審核 ->|否| 補件[通知補件]
+補件 -> 申請
+審核 ->|是| 通過((審核通過))
+```</code></pre>
+          <ul>
+            <li><code>A[文字]</code>：一般步驟</li>
+            <li><code>A{文字}</code>：判斷</li>
+            <li><code>A((文字))</code>：開始或結束</li>
+            <li><code>A -&gt;|是| B</code>：有標籤的分支</li>
+          </ul>
+          <button class="secondary-btn help-example-btn" data-help-example="flow">建立流程圖範例</button>
+        </details>
+
+        <details>
+          <summary><span class="help-icon">♧</span> 樹狀圖：分類與階層</summary>
+          <p><strong>適合：</strong>分類學、組織架構、檔案目錄、課程章節。</p>
+          <pre><code>```tree
+動物界
+  脊椎動物
+    哺乳類
+    鳥類
+  無脊椎動物
+    節肢動物
+    軟體動物
+```</code></pre>
+          <p>每往下一層縮排兩個空白。開圖後可點擊節點收合或展開。</p>
+          <button class="secondary-btn help-example-btn" data-help-example="tree">建立樹狀圖範例</button>
+        </details>
+
+        <details>
+          <summary><span class="help-icon">⇧</span> 策略地圖：把能力連到最終成果</summary>
+          <p><strong>適合：</strong>組織策略、個人學習計畫、產品發展與專案管理。</p>
+          <div class="strategy-manual-flow">
+            <div><b>4. 成果／財務</b><span>最後想達成什麼？</span></div>
+            <div><b>3. 學習者／利害關係人</b><span>使用者要感受到什麼價值？</span></div>
+            <div><b>2. 內部流程</b><span>哪些工作必須做好？</span></div>
+            <div><b>1. 學習與成長</b><span>需要哪些能力、技術與資源？</span></div>
+          </div>
+          <p><strong>建議順序：</strong>先寫最上層成果，再往下找必要條件；建立箭頭時則由下往上連。</p>
+          <p><strong>完整例子：</strong>員工數位訓練 → 縮短點餐流程 → 降低顧客等待時間 → 提升回購率。</p>
+          <p><strong>KPI 寫法：</strong>使用可衡量的數字與期限，例如「三個月內將平均等待時間降至 5 分鐘」。</p>
+          <button class="secondary-btn help-example-btn" data-help-example="strategy">建立策略地圖範例</button>
+        </details>
+      </section>
+
+      <section class="help-troubleshooting">
+        <h3>常見問題</h3>
+        <dl>
+          <dt>按圖表後是空白？</dt><dd>確認目前筆記有內容，並檢查程式區塊名稱是否正確：<code>knowledge</code>、<code>flow</code>、<code>tree</code>。</dd>
+          <dt>流程圖只有部分節點？</dt><dd>每一條流程請獨立一行，節點代號需保持一致，例如都使用「審核」。</dd>
+          <dt>樹狀圖層級不正確？</dt><dd>請使用空白縮排，建議每一層兩個空白，不要混用 Tab。</dd>
+          <dt>策略地圖沒有從文章自動生成？</dt><dd>策略地圖是獨立的可編輯資料，需要在策略地圖視窗新增目標，或按「載入範例」。</dd>
+          <dt>圖表與筆記是否會同步？</dt><dd>Knowledge Graph、心智圖、流程圖與樹狀圖會重新分析筆記；策略地圖則獨立保存在該篇筆記中。</dd>
+        </dl>
+      </section>
+    </div>
+  </div>
+
+  <div id="trashModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="trashTitle">
+    <div class="modal-card">
+      <div class="modal-head">
+        <div>
+          <h2 id="trashTitle">垃圾桶</h2>
+          <p>被刪除的筆記會保留在這裡，直到手動永久刪除。</p>
+        </div>
+        <button class="icon-btn close-modal" aria-label="關閉">×</button>
+      </div>
+      <div class="visual-toolbar between">
+        <span id="trashCount" class="muted"></span>
+        <button id="emptyTrashBtn" class="secondary-btn danger-text">清空垃圾桶</button>
+      </div>
+      <div id="trashList" class="trash-list"></div>
+    </div>
+  </div>
+
+  <div id="historyModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="historyTitle">
+    <div class="modal-card">
+      <div class="modal-head">
+        <div>
+          <h2 id="historyTitle">版本紀錄</h2>
+          <p>每篇筆記最多保留 30 個近期版本。</p>
+        </div>
+        <button class="icon-btn close-modal" aria-label="關閉">×</button>
+      </div>
+      <div id="historyList" class="history-list"></div>
+    </div>
+  </div>
+
+  <div id="settingsModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
+    <div class="modal-card">
+      <div class="modal-head">
+        <div>
+          <h2 id="settingsTitle">設定與備份</h2>
+          <p>資料會儲存在 IndexedDB，並自動搬移舊版 localStorage 筆記。</p>
+        </div>
+        <button class="icon-btn close-modal" aria-label="關閉">×</button>
+      </div>
+
+      <div class="storage-status">
+        <div><strong>儲存狀態</strong><span id="storageStatus">檢查中…</span></div>
+        <div><strong>上次外部備份</strong><span id="lastBackupStatus">尚未備份</span></div>
+      </div>
+
+      <div class="settings-grid">
+        <button id="persistentBtn" class="setting-action">
+          <strong>要求持久儲存</strong>
+          <span>降低瀏覽器因空間不足自動清理資料的機率</span>
+        </button>
+        <button id="exportBtn" class="setting-action">
+          <strong>匯出完整備份</strong>
+          <span>包含筆記、垃圾桶、版本紀錄與策略地圖</span>
+        </button>
+        <label class="setting-action file-action">
+          <strong>合併匯入備份</strong>
+          <span>同名筆記會合併內容，不直接覆蓋</span>
+          <input id="importInput" type="file" accept="application/json,.json" hidden>
+        </label>
+        <button id="exportMdBtn" class="setting-action">
+          <strong>匯出目前筆記</strong>
+          <span>下載 Markdown 檔案</span>
+        </button>
+        <button id="helpSettingBtn" class="setting-action">
+          <strong>使用說明與範例</strong>
+          <span>查看各種圖表用途，並建立可直接測試的範例筆記</span>
+        </button>
+        <button id="installHelpBtn" class="setting-action">
+          <strong>安裝到 iPhone</strong>
+          <span>顯示加入主畫面步驟</span>
+        </button>
+      </div>
+
+      <div id="installHelp" class="install-help hidden">
+        <h3>在 iPhone 15 安裝</h3>
+        <ol>
+          <li>用 Safari 開啟本 App 網址。</li>
+          <li>點擊 Safari 的「分享」按鈕。</li>
+          <li>選擇「加入主畫面」。</li>
+          <li>確認名稱後按「加入」。</li>
+        </ol>
+      </div>
+
+      <p class="storage-warning">即使取得持久儲存權限，使用者仍可在瀏覽器設定中手動刪除網站資料，因此外部 JSON 備份仍是必要的。</p>
+    </div>
+  </div>
+
+  <div id="toast" class="toast hidden" role="status" aria-live="polite">
+    <span id="toastMessage"></span>
+    <button id="toastAction" class="toast-action hidden"></button>
+  </div>
+
+  <script src="./app.js?v=20260713-5" defer></script>
+</body>
+</html>
